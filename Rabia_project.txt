@@ -1,0 +1,170 @@
+---
+title: "Exploring the BRFSS data"
+output:
+  pdf_document: default
+  html_document:
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+```
+
+### Load data
+
+```{r setup, eval=FALSE}
+setwd("D:/Class work/Data analysis and statistics/Project")
+```
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+The data used for this analysis was obtained from The Behavioral Risk Factor Surveillance System (BRFSS) Project. BRFSS is an ongoing surveillance system designed to measure behavioral risk factors for the noninstitutionalized adult population (18 years of age and older) residing in the US. The data was collected over time through monthly telephone interviews (BRFSS Codebook). While the BRFSS landline telephone survey was conducted from a randomly selected adult in a household, the cellular telephone version collected data from an adult who participates by using a cellular telephone and resides in a private residence or college housing. Random sampling of the individuals surveyed is caried out, thus can generalize to the US population. Since this is a survey and an observational study we can only establish an association between the explanatory and response variables, but casuality cannot be inferred. The potential bias for the telephone survey might be that it does not cover people who do not have access to telephone. 
+For this analysis categorical variable were selected: 
+
+1: General Health (genhlth) 
+2: Sleep time (sleptim1) 
+3: Gender (sex)
+4: Income (income2)
+5: State (X-state)
+A brief general summary of the project data is given as.
+
+```{r}
+genHealth <- brfss2013$genhlth
+sleeptime <- brfss2013$sleptim1
+sex <- brfss2013$sex
+income2 <- brfss2013$income2
+data <- cbind(genHealth, sleeptime, sex, income2)
+summary(data)
+```
+
+* * *
+
+## Part 2: Research questions
+
+**Research quesion 1: Is there any association/effect between self-reported sleep time and self-reported general health of gender i.e. male and/or female ??
+In this first question we will look the effect less sleep time on genrel health condition.
+My observation and/or hypothesis is that respondents who get seven or eight hours of sleep will tend to report BETTER general health; and, conversely, that respondents who get LESS sleep may report worse health. This is interesting because personally I believe sleep control the stress mind are the most important contributors to better health.
+
+**Research quesion 2: What is the genrel health ratio between male and female? Is this related to their income??
+
+**Research quesion 3: Genrel health and health plan of gender??
+we will look at the distribution of general health in Arizona by month compared to the rest of the nation ??
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+
+
+**Research quesion 1:**
+
+```{r}
+sleep.health <- cbind(genHealth, sleeptime)
+summary(sleep.health)
+```
+or
+```{r}
+by(sleeptime, genHealth, summary)
+```
+Although the median is seven (7) hours of sleep and the third quartile is eight (8) hours for all health categories except poor health category in gender. The people with poor health category have lower first quartiles. so there is a genial relationship between poor health and lower sleep level.  
+
+```{r}
+plot(brfss2013$genhlth, brfss2013$sleptim1,, xlab = "genrel health", ylab = "sleeptime", main = "Figure 1 - sleep versus Health Coverage")
+```
+when compare all these with the gender i.e. male or female than ggplot shows this relation more clearly and we get the following iterpretation 
+```{r}
+sleep.health1 <- select(brfss2013, genhlth, sex, sleptim1) %>% 
+     filter(!is.na(genHealth), !is.na(sex), sleptim1 <= 10)
+
+ggplot(data = sleep.health1, aes(x = genhlth, y = sleptim1)) +
+    geom_violin() +
+    scale_y_continuous(limits = c(4,10), breaks = 4:10) +
+    facet_grid(. ~ sex) +
+    xlab("genhlth = Self reported general health") +
+    ylab ("sleptim1 = How much time do you sleep?")
+```
+
+**Research quesion 2:**
+
+```{r}
+by(sex, genHealth, summary)
+```
+
+```{r}
+plot(brfss2013$genhlth, brfss2013$sex, xlab = "genrel health", ylab = "sex", main = "Figure 2 - Gender versus Health Coverage")
+```
+Or
+```{r}
+plot(brfss2013$sex, brfss2013$genhlth, xlab = "SEX", ylab = "genrel health", main = "Figure 2 - Gender versus Health Coverage")
+``` 
+Figure 2 shows the proportions of male and female respondents who responded about their general health condition. From the plot, it appears both males and females responded in a similar manner. The data summary shows that about 80% of the participants responded that they have either excellent, very good, or good health condition.
+
+Q. No. 2: 
+
+```{r}
+maleData <- brfss2013 %>% filter(sex == "Male")
+femaleData <- brfss2013 %>% filter(sex == "Female")
+```
+From the 201313 observations for this 2 variables of male and female, there are 200469 males and 289319 females. Mostly lies in good category of genrel health. Only 27951 are in the range of poor health category. 
+```{r}
+ma_fe.health <- select(brfss2013, genhlth, sex) %>% 
+   filter(!is.na(genhlth), !is.na(sex))
+
+summary(ma_fe.health)
+```
+
+
+```{r}
+ggplot(data = ma_fe.health, aes(factor(genhlth))) + geom_bar(aes(fill = genhlth), position = "fill") + facet_grid(. ~ sex)
+```
+
+```{r}
+income.isna <- select(brfss2013, genhlth, sex, income2) %>% 
+       filter(!is.na(genHealth), !is.na(sex), !is.na(income2))
+ggplot(data = income.isna, aes(x = genhlth, y = income2)) +
+   geom_violin()
+```
+
+```{r}
+income.h <- select(brfss2013, genhlth, sex, income2) %>% 
+   filter(!is.na(genhlth), !is.na(income2), 
+          !is.na(sex), sex %in% c("Male","Female"))
+
+ggplot(data = income.h, aes(x = genhlth, y = income2)) +
+   geom_count() +
+   facet_grid(. ~ sex) +
+   xlab("genhlth = Self reported general health")
+```
+
+**Research quesion 3:**
+To summarise the data for Arizona by month of june as compared to others nation.
+```{r}
+arizonaData <- brfss2013 %>% filter(X_state == "Arizona")
+arizonaData %>%  filter(fmonth == "June") %>% group_by(genhlth)%>% summarise(n = n())
+
+ggplot(data = arizonaData, aes(x = fmonth)) + geom_bar(aes(fill = genhlth), position = "fill")
+```
+Total 417 interviews were conducted in arizona and mostly people self reported them in very good or good category of genrel. There are only few with poor health.
+```{r}
+brfss2013 %>%  filter(fmonth == "June") %>% group_by(genhlth)%>% summarise(n = n())
+
+ggplot(data = brfss2013, aes(x = fmonth)) + geom_bar(aes(fill = genhlth), position = "fill")
+```
+The summary of overall genrel health of all nations in the month of june lie in beween very good or good category out of total intervies conducted are 37,151.
+
+
